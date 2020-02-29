@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  
+  
+  
+  <entry>
+    <title>Unity运行时检测Prefab的解决方案</title>
+    <link href="/2020/02/24/Unity%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A3%80%E6%B5%8BPrefab%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/"/>
+    <url>/2020/02/24/Unity%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A3%80%E6%B5%8BPrefab%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/</url>
+    
+    <content type="html"><![CDATA[<h3 id="可能需要在运行时检测Prefab的场景"><a href="#可能需要在运行时检测Prefab的场景" class="headerlink" title="可能需要在运行时检测Prefab的场景"></a>可能需要在运行时检测Prefab的场景</h3><p>使用Unity进行开发时，为了降低脚本的挂载数量且让Monobehaviour的创建销毁由自己控制，所以采用了让脚本和Prefab分离的方法。因此很多物体都是运行时通过Prefab生成的。又因为Prefab上没有挂载任何游戏逻辑脚本，只是GameObject的集合。</p><a id="more"></a><p>所以此时，如果Prefab内部的GameObject有响应或操作，且需要Prefab本身进行一些逻辑操作，即在没有脚本且未知Prefab对应脚本类型时，子物体控制父物体（或更上层物体）。<br>那么，就需要使用到形如<code>transform.parent.parent.parent.gameObject</code>。比如：Prefab内部物体被射线打到时，又需要Prefab最上层物体对射线检测进行响应。<br>所以，我一开始想到的是能不能在运行时对Prefab进行检测。</p><h3 id="无法在运行时检测的实际情况"><a href="#无法在运行时检测的实际情况" class="headerlink" title="无法在运行时检测的实际情况"></a>无法在运行时检测的实际情况</h3><h4 id="Unity论坛上关于运行时Prefab的讨论"><a href="#Unity论坛上关于运行时Prefab的讨论" class="headerlink" title="Unity论坛上关于运行时Prefab的讨论"></a>Unity论坛上关于运行时Prefab的讨论</h4><p>但实际上，这是根本不可执行的。很早的时候，在Unity的官方论坛就有人回复过<a href="https://answers.unity.com/questions/218429/how-to-know-if-a-gameobject-is-a-prefab.html" target="_blank" rel="noopener">运行时检测Prefab的问题</a>。</p><blockquote><p>if you have a game object,At runtime you can’t find it out any longer and its not needed cause you can not create or modify them anyway.<br>即：由于已经不需要更改这些Prefab了（因为如果要改，就应该在编辑器模式下提前改），所以检测它是不是一个prefab是一个没有意义的事。</p></blockquote><h4 id="废弃方案"><a href="#废弃方案" class="headerlink" title="废弃方案"></a>废弃方案</h4><p>所以以下函数在运行时是无法检测一个带有特性的Prefab的。</p><pre><code class="C#">[Obsolete(&quot;Prefab在运行时不可检测，已废弃&quot;,true)]public static GameObject GetClassByChild&lt;T&gt;(GameObject curObj) where T: PrefabBinding{    GameObject classObj=curObj;    //Prefab路径    string attrPath = typeof(T).GetCustomAttribute&lt;PrefabPath&gt;().path;    //Attribute.IsDefined(curObj.GetType(),PrefabPath)    string objPath = AssetDatabase.GetAssetPath(curObj);    /*如果不是PrefabClass节点，则往上递归    if(objPath!=null &amp;&amp; attrPath == objPath){        return classObj;    }*/    //如果当前是根节点，则直接返回当前GameObject    if(curObj.transform.parent!=null){        classObj = GetClassByChild&lt;T&gt;(curObj.transform.parent.gameObject);    }else{        Debug.Log(&quot;已超出GameObject递归目录，当前节点为Global，将返回Null&quot;);        return null;    }         return classObj;}</code></pre><h3 id="新的解决方案"><a href="#新的解决方案" class="headerlink" title="新的解决方案"></a>新的解决方案</h3><h4 id="样例场景"><a href="#样例场景" class="headerlink" title="样例场景"></a>样例场景</h4><p>以射线检测为例，比如这种当射线打到一棵由Prefab动态生成出来的树上，该树上<strong>没有任何控制类脚本</strong>，Tree脚本和Tree物体在Unity中完全分离，需要通过<code>hit.collider</code>中的信息，来获取该物体在游戏场景中对应的Tree脚本实例。</p><pre><code class="C#">...(略)private void FindPrefab(RaycastHit2D hit) {    if (hit.collider.tag == &quot;Tree&quot;) {        //Tree tree = GetClass&lt;Tree&gt;(hit.collider.transform.parent.parent.gameObject);        //通过合适的修改将上面的调用方式改为下面这种，通过碰撞体直接获取该prefab对应的脚本实例        Tree tree = GetClass&lt;Tree&gt;(hit.collider);    }}public T GetClass&lt;T&gt;(GameObject gameobject) where T : class {    Dictionary&lt;GameObject, object&gt; dic = data[typeof(T)];    if (dic.ContainsKey(gameobject)) {        return dic[gameobject] as T;    }    else {        Debug.LogError(&quot;未找到框架类&quot; + typeof(T).Name);        return null;    }}...</code></pre><h4 id="解决方案1"><a href="#解决方案1" class="headerlink" title="解决方案1"></a>解决方案1</h4><p>在每个会产生<strong>多层级子物体控制最上层父物体</strong>操作的Prefab对应的脚本类中添加对应的响应处理函数。</p><ul><li><strong>优点</strong>：符合OOP，达到了解耦合的目的，即使Prefab嵌套依旧可以每个响应都有自己独立的函数互不干扰</li><li><strong>缺点</strong>：每次Prefab变动，都需要去更改对应类中的响应函数，增大工作量。</li></ul><pre><code class="C#">//如果Prefab包含多个collider，则不使用接口interface IColliderCheck{    GameObject SubControlMain();}//不同的类会写对应的不同的检测返回函数，再通过返回的GameObject来查找对应的脚本实例public class Tree:PrefabClass,IColliderCheck{    ...    GameObject SubControlMain(Collider2D col){        return col.transform.parent.parent.gameObject;    }    ...}</code></pre><h4 id="解决方案2"><a href="#解决方案2" class="headerlink" title="解决方案2"></a>解决方案2</h4><p>对单个Prefab的所有物体标上对应的tag，并利用一个静态函数和泛型</p><ul><li><strong>优点</strong>：所有的类都用一个静态函数来解决多层级子类控制父类，省去了大量响应函数的变动工作量</li><li><strong>缺点</strong>：会产生很多tag，尤其是在嵌套Prefab中，tag不能重复命名，必须不同。</li></ul><pre><code class="C#">public T GetClass&lt;T&gt;(Collider2D col) where T : PrefabBinding{    Dictionary&lt;GameObject, object&gt; dic = data[typeof(T)];    GameObject gameobject = GetClassByChild(col.gameObject,col.tag);    if(dic.ContainsKey(gameobject)){        return dic[gameobject] as T;    }    else {        Debug.LogError(&quot;未找到PrefabBinding类:&quot; + typeof(T).Name);        return null;    }}public static GameObject GetClassByChild(GameObject curObj,string tag){    GameObject classObj=curObj;    //Debug.Log(curObj.name+&quot;,&quot;+curObj.GetType());    if(curObj.transform.parent != null){        GameObject upperObj = curObj.transform.parent.gameObject;        //如果父节点与当前节点有相同的tag，则说明当前节点处于prefab内部，需要递归向上查找prefabClass主节点        if(upperObj.tag == tag){            classObj=GetClassByChild(upperObj,tag);        }        //tag不同，说明上层节点已经不是prefab，所以当前节点是prefabClass的主节点，此时返回当前节点        return classObj;    }    Log.Warning(&quot;无法递归找到PrefabClass类的GameObject，将返回Null&quot;);    return null;}</code></pre><h3 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h3><ul><li><a href="https://docs.microsoft.com/zh-cn/dotnet/api/system.type.gettype?view=netframework-4.8" target="_blank" rel="noopener">C#反射调用GetType()</a></li><li><a href="https://www.xuanyusong.com/archives/2576" target="_blank" rel="noopener">非运行时Prefab检测：Unity研究院之Prefab和GameObject的正向和逆向查找引用</a></li></ul>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>Unity</tag>
+      
+      <tag>C#</tag>
+      
+      <tag>游戏开发</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>hexo主题创建失败小记</title>
+    <link href="/2020/02/16/hexo%E4%B8%BB%E9%A2%98%E5%88%9B%E5%BB%BA%E5%A4%B1%E8%B4%A5%E5%B0%8F%E8%AE%B0/"/>
+    <url>/2020/02/16/hexo%E4%B8%BB%E9%A2%98%E5%88%9B%E5%BB%BA%E5%A4%B1%E8%B4%A5%E5%B0%8F%E8%AE%B0/</url>
+    
+    <content type="html"><![CDATA[<a id="more"></a><h3 id="Bug情况"><a href="#Bug情况" class="headerlink" title="Bug情况"></a>Bug情况</h3><p>按照官方讲解的目录创建Hexo主题时出现的Bug:</p><pre><code class="javascript">TypeError: Cannot convert undefined or null to object    at Function.keys (&lt;anonymous&gt;)    at getKeys (~/site/node_modules/deepmerge/dist/cjs.js:61:16)    .../*大部分省略*/</code></pre><p>主题配置目录如下：</p><pre><code class="Bash">$ Tree -L 2.├── _config.yml├── languages├── layout│   ├── _partials│   ├── archives.ejs│   ├── index.ejs│   ├── layout.ejs│   └── post.ejs├── scripts└── source    ├── css    ├── js    └── lib</code></pre><hr><h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><p>主题无论是使用<code>ejs</code>还是<code>swig</code>编写，都是使用这种通用的配置目录。当<strong>所有的配置文件都为空且目录为空</strong>时，就会出现这种错误。起初我以为是<code>_config.yml</code>的权限不足导致的结果，但是当使用<code>chmod</code>提升权限之后依旧有问题。<br>在网上查找之后，配置目录中存在配置文件，但文件为空，主题中的<code>_config.yml</code>内容也为空的创建流程几乎都是hexo2.8.0左右的教程。<br>最终，在hexo的<a href="https://github.com/hexojs/hexo/issues/4052" target="_blank" rel="noopener">github 4052issue</a>找到了和我遇到相同问题的人,<br>其中<a href="https://github.com/mcdanielisaac" target="_blank" rel="noopener">@mcdanielisaac</a>在评论中提到:</p><blockquote><p>In my original issue post, I did not include my theme s config.yml file because it was empty. However that seems to be the issue. With the added ability to merge the config files there appears to need to be something in the file or it returns the error above.</p></blockquote><p>该评论的大意是：因为theme的<code>_config.yml</code>文件内容为空，所以他并没有创建该文件。但由于hexo的<code>_config.yml</code>合并功能，如果创建了<code>_config.yml</code>文件又不填写内容的话，就会导致该Bug的发生。</p><p>在我查阅官方文档[1]之后，发现hexo的配置文件<code>_config.yml</code>合并功能很像静态语言继承接口的特质，如果你在自己的theme中配置了<code>_config.yml</code>那么里面<strong>必须存在</strong>部分配置用来和根目录中的<code>_config.yml</code>配置合并。所以在一开始新建主题时，如果没有任何需要在主题目录级的<code>_config.yml</code>进行配置的属性，那么就<strong>不要创建该文件</strong>以防止出现这种不必要的Bug。</p><hr><h3 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h3><ul><li><a href="https://hexo.io/zh-cn/docs/configuration#%E8%A6%86%E7%9B%96%E4%B8%BB%E9%A2%98%E9%85%8D%E7%BD%AE" target="_blank" rel="noopener">config覆盖主题配置示例</a></li></ul>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>Hexo</tag>
+      
+      <tag>Bug</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>Hello World</title>
+    <link href="/2020/02/08/hello-world/"/>
+    <url>/2020/02/08/hello-world/</url>
+    
+    <content type="html"><![CDATA[<p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p><a id="more"></a><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><pre><code class="bash">$ hexo new &quot;My New Post&quot;</code></pre><p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><pre><code class="bash">$ hexo server</code></pre><p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><pre><code class="bash">$ hexo generate</code></pre><p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><pre><code class="bash">$ hexo deploy</code></pre><p>More info: <a href="https://hexo.io/docs/one-command-deployment.html" target="_blank" rel="noopener">Deployment</a></p>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>Test</tag>
+      
+      <tag>Hexo</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>SVN使用异常总结</title>
+    <link href="/2019/02/19/SVN%E4%BD%BF%E7%94%A8%E5%BC%82%E5%B8%B8%E6%80%BB%E7%BB%93/"/>
+    <url>/2019/02/19/SVN%E4%BD%BF%E7%94%A8%E5%BC%82%E5%B8%B8%E6%80%BB%E7%BB%93/</url>
+    
+    <content type="html"><![CDATA[<h3 id="What-for"><a href="#What-for" class="headerlink" title="What for"></a>What for</h3><p>在这里总结一些工作时使用svn遇到的一些异常，防止时间过长导致issue文档分散或者自己忘掉，方便日后查找。</p><h3 id="异常情况"><a href="#异常情况" class="headerlink" title="异常情况"></a>异常情况</h3><p>svn 命令行文件出现 <code>!</code>，但svn的所有操作均正常</p><p>使用<code>svn --version</code>检查svn客户端及服务器的版本，是否对应一致。不一致可能会导致所有操作均可进行，但<code>.svn</code>在对比文件差异时出现文件遗失的警告。需要手动对svn的客户端或服务器进行降svn版本操作（<em>使用官方提供的python脚本，Mac下可以使用brew管理</em>）<br>官网对于此种情况的类似解释，原因如下：</p><ul><li><a href="https://subversion.apache.org/faq.zh.html#working-copy-format-change" target="_blank" rel="noopener">This client is too old to work with working copy或所有文件前显示’!’</a></li><li><a href="https://issues.apache.org/jira/browse/SVN-2961" target="_blank" rel="noopener">issue #2961</a></li></ul><hr><h4 id="自动脚本调用-svn无密码配置"><a href="#自动脚本调用-svn无密码配置" class="headerlink" title="自动脚本调用 svn无密码配置"></a>自动脚本调用 svn无密码配置</h4><p>如果使用的自动化脚本中存在对svn的部分操作，但svn又依赖每次用户密码的输入的话，就有可能导致自动化脚本的<code>Authentication fail</code>的报错。要处理这种情况，首先需要将<code>～/.subversion/config</code>中的store配置为yes，具体操作如下（省略部分注释）：</p><pre><code class="bash">### This file configures various client-side behaviors.###### The commented-out examples below are intended to demonstrate### how to use this file.### Section for authentication and authorization customizations.###[auth]### Set password stores used by Subversion. They should be### delimited by spaces or commas. The order of values determines### the order in which password stores are used.### Valid password stores:###   gnome-keyring        (Unix-like systems)###   kwallet              (Unix-like systems)###   gpg-agent            (Unix-like systems)###   keychain             (Mac OS X)###   windows-cryptoapi    (Windows)password-stores = 未加密的passwordstore-passwords = yes</code></pre><ol><li>store-passwords = yes  保证svn存储用户输入的密码。password-store 用来保存密码。</li><li>使用svn update更新仓库并保存输入，在询问是否存储非加密密码时输入yes，提示内容大致为：</li></ol><pre><code class="bash">-----------------------------------------------------------------------ATTENTION!  Your password for authentication realm:   &lt;http://xx.x.x.xxx:xx&gt; RepoName svncan only be stored to disk unencrypted!  You are advised to configureyour system so that Subversion can store passwords encrypted, ifpossible.  See the documentation for details.You can avoid future appearances of this warning by setting the valueof the &#39;store-plaintext-passwords&#39; option to either &#39;yes&#39; or &#39;no&#39; in&#39;/Users/dh/.subversion/servers&#39;.-----------------------------------------------------------------------Store password unencrypted (yes/no)? yes</code></pre><h3 id="参考链接："><a href="#参考链接：" class="headerlink" title="参考链接："></a>参考链接：</h3><ul><li><a href="https://stackoverflow.com/questions/2899209/how-to-save-password-when-using-subversion-from-the-console" target="_blank" rel="noopener">How to save password when using Subversion from the console</a></li><li><a href="https://stackoverflow.com/questions/2599281/cant-make-svn-store-passwords-even-though-the-configuration-is-set-to-allow-it" target="_blank" rel="noopener">Can’t make SVN store passwords, even though the configuration is set to allow it</a></li></ul>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>svn</tag>
+      
+      <tag>版本管理</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>多Git账号多仓库的ssh_config访问配置</title>
+    <link href="/2019/01/29/%E5%A4%9AGit%E8%B4%A6%E5%8F%B7%E5%A4%9A%E4%BB%93%E5%BA%93%E7%9A%84ssh-config%E8%AE%BF%E9%97%AE%E9%85%8D%E7%BD%AE/"/>
+    <url>/2019/01/29/%E5%A4%9AGit%E8%B4%A6%E5%8F%B7%E5%A4%9A%E4%BB%93%E5%BA%93%E7%9A%84ssh-config%E8%AE%BF%E9%97%AE%E9%85%8D%E7%BD%AE/</url>
+    
+    <content type="html"><![CDATA[<h3 id="引言"><a href="#引言" class="headerlink" title="引言"></a>引言</h3><p>在进公司实习之前，虽然为了方便存储自己的练习代码，配置了Github的ssh，但电脑上的ssh也只有自己的私人账户，而且刚进公司的时候项目组的大部分东西都还在svn上，两者不冲突不打架，就没怎么考虑过config配置ssh的问题。最近大规模迁移到gitlab和独立域名的时候，查看推送的时候发现显示推送对象是私人账号，而且有时会出现<code>Permission Denied</code>的情况，于是便开始补课ssh-config,总结成这篇博客，希望可以加深自己的印象。</p><h3 id="生成公私钥并配置到Github账户"><a href="#生成公私钥并配置到Github账户" class="headerlink" title="生成公私钥并配置到Github账户"></a>生成公私钥并配置到Github账户</h3><h4 id="防止覆盖地以邮箱生成rsa类型的公私钥"><a href="#防止覆盖地以邮箱生成rsa类型的公私钥" class="headerlink" title="防止覆盖地以邮箱生成rsa类型的公私钥"></a>防止覆盖地以邮箱生成rsa类型的公私钥</h4><pre><code class="bash">ssh-keygen -t rsa -C &quot;emailaddress@example.com&quot; -f keyname</code></pre><p>由于使用vim打开复制时存在vim自动添加的\t，加入Github的ssh配置时如果不想自己手动删掉，可以使用Sublime打开。但由于Sublime在默认的<code>/Applications</code>下没有直接使用命令行打开的连接，所以需要手动设置之后再使用Sublime打开。</p><pre><code class="bash">ln -s /Applications/Sublime\ Text.app/Contents/SharedSupport/bin/subl /usr/local/bin/sublime</code></pre><p>之后就可以在终端用命令启动sublime了SublimeCommand启动文档代码。使用config文件对不同的仓库配置相应的sshKey。</p><h4 id="较多账户常见的状况"><a href="#较多账户常见的状况" class="headerlink" title="较多账户常见的状况"></a>较多账户常见的状况</h4><ol><li>公司使用独立域名了的云服务器上的Git仓库（<strong>公司配给的账号</strong>）</li><li>公司在Github上拥有公开的项目或GitLab上项目的拷贝（<strong>个人独立账号，公司配给账号均可</strong>）</li><li>基于以上情况，自己又拥有对应Git站点账号，频繁登陆GitLab、Bitbucket或Github等个人仓库（<strong>个人独立账户</strong>）</li><li>拥有<strong>同一网站的多个账号</strong>并需要对不同账号所属的仓库进行push操作同网站多账号进行push操作时的<code>Permission denied</code>由于登陆github时，会检查对应账号下是否存在ssh的公钥权限。所以需要配置<code>git config</code>文件。</li></ol><pre><code class="git">git config --global user.name &quot;Github Login Name&quot;git config --global user.email &quot;Github_Login@E-mail.com&quot;</code></pre><p>并使用<code>git config --global --list</code>检查配置，该设置成功时使用<code>ssh -T git@github.com</code>时，出现的提示信息<code>Hi,XXX!</code>使用的称谓即为Github账号名。但该操作容易导致常见状况的No.4出现Permission denied的情况。处理方式是使用<code>git config –local</code>解决多账号冲突。</p><h4 id="公司的一个项目拥有多个仓库地址（不同站点的同一项目）"><a href="#公司的一个项目拥有多个仓库地址（不同站点的同一项目）" class="headerlink" title="公司的一个项目拥有多个仓库地址（不同站点的同一项目）"></a>公司的一个项目拥有多个仓库地址（不同站点的同一项目）</h4><ol><li><strong>使用公司账号配置该账号在config中的设置</strong><ul><li>192.168.1.1</li><li>127.0.0.1</li><li><a href="http://www.company.middle.com" target="_blank" rel="noopener">www.company.middle.com</a></li><li>GitLab</li><li>… …</li></ul></li></ol><p>假设公司的某一项目在上述地址拥有项目的拷贝。那么在.ssh中的config设置中，可以配置相同的sshkey(下方最后的gitLabCompanyAccount主要是为能在clone的时候和个人账户区分开，保证ssh检查权限时检查对应的配置文件，详见同网站不同账号的不同仓库项目配置)</p><ol start="2"><li><strong>config文件</strong></li></ol><pre><code class="bash">Host 192Repo    HostName https://192.168.1.1    User git    IdentityFile ~/.ssh/id_rsa_companyHost 127Repo    HostName https://127.0.0.1    User git    IdentityFile ~/.ssh/id_rsa_companyHost company    HostName https://www.company.middle.com    User git    IdentityFile ~/.ssh/id_rsa_companyHost gitLabCompanyAccount    HostName https://www.gitlab.com/companyRepo    User git    IdentityFile ~/.ssh/id_rsa_company</code></pre><ol start="3"><li><strong>使用拥有公司权限的git账号添加不同的仓库地址进行推送</strong>时，可以使用<code>git remote add newRepoName Host:RepoName.git</code>将这些仓库都加入引用，方便统一push，也可以手动变成<code>.git/.config</code>中的origin方便在缺省的情况下全部推送。<h4 id="同网站不同账号的不同仓库权限问题"><a href="#同网站不同账号的不同仓库权限问题" class="headerlink" title="同网站不同账号的不同仓库权限问题"></a>同网站不同账号的不同仓库权限问题</h4>此情况适用于形如：GitHub下有公司账号，自己的多个私人账号，此时又不希望多个账号之间的ssh相互冲突。可以设置不同的Host名称，在clone时使用Host名称进行操作，保证权限检查的正确。以上面最后一个情况+私人账号为例，可以做如下配置：</li></ol><pre><code class="bash">Host gitLabCompanyAccount    HostName https://www.gitlab.com/companyRepo    User git    IdentityFile ~/.ssh/id_rsa_companyHost gitLabAccount001Name    HostName https://www.gitlab.com/privateAccount001    User git    IdentityFile ~/.ssh/id_rsa_privateAccount001Host githubAccount01Name    HostName https://www.github.com/git01Name    User git    IdentityFile ~/.ssh/id_rsa_git001Host gitLabAccount02Name    HostName https://www.github.com/git02Name    User git    IdentityFile ~/.ssh/id_rsa_git001</code></pre><ol><li>前两个是同在GitLab下时，使用相应账号生成的ssh公钥配置的一个公司账号一个私人账号，后两个是Github下的两个私人账号。HostName中网站后面加上对应的用户名来确保不会有任何一个ssh覆盖到Github或者GitLab的全局ssh权限设置，因为每个Host都只管对应的账号或者仓库。</li><li>使用配置时：克隆公司项目时可以使用<code>git clone gitLabCompanyAccount：SubRepoName.git</code>,而操作自己的私人账号则可以使用<code>git clone gitLabAccount001Name:SubRepoName.git</code></li></ol><h3 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h3><p>虽然这次知道怎么用了，但究其<code>ssh-config</code>检验机制的原理和实现流程还是处于似是而非的阶段。打算这次春节的时候，再好好学习一下.</p>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>版本管理</tag>
+      
+      <tag>Git</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>Lua函数重载</title>
+    <link href="/2019/01/20/Lua%E5%87%BD%E6%95%B0%E9%87%8D%E8%BD%BD/"/>
+    <url>/2019/01/20/Lua%E5%87%BD%E6%95%B0%E9%87%8D%E8%BD%BD/</url>
+    
+    <content type="html"><![CDATA[<h3 id="想法和思路"><a href="#想法和思路" class="headerlink" title="想法和思路"></a>想法和思路</h3><p>在最近学习lua面向对象的时候，在想可不可以为一个类实现多个构造函数或者是<code>new</code>，也就是传统意义上的函数重载。尽管没有什么没有什么实际用途，毕竟想要实现同名函数的不同入参，只要入参的表内容不同即可。于是，这个问题就变成了有没有什么办法可以在Lua中从形式上实现和静态语言(比如C++)类似的函数重载。</p><a id="more"></a><p>一开始思考的时候，根据lua面向对象的方式，会考虑使用元表。即：如果根据条件判断出_当前的<code>ctor</code>函数或者<code>new</code>函数的入参形式和传参不同，就向<code>metatable</code>中的<code>__index</code>检索。然后我就有些犹豫，虽然很难会出现有10个以上的<code>ctor</code>或者<code>new</code>函数的情况，但如果出现了，那不是就会变成<code>__index</code>检索到<code>__index</code>这样不停迭代的情况吗，难道真的要这样实现？也许是我思考的方向不对。</p><p>于是我就换了一种思路，比如：是都存在一个表中，当要调用的时候遍历该表，用以查找同入参的函数。为了尽可能地减少搜索时间，表可以使用入参从多到少或从少到多排序，同数量的入参再根据类型排序。但这样的实现方式，依旧存在问题：</p><p>如果<code>number</code>类型在同参数数量根据类型继续排序时，根据类型(假如类型的先后是根据类型首字母的ASCII码大小)排在了string之前，那么后者要花费的检索时间要比前者长。这种情况也很麻烦，所有的函数应该是平级的。那么，如果想要平级，就需要在检测到第一个参数类型的时候，去第一个参数类型所存的后续列表中查找，类似于散列的思想，在第一个参数和第二个参数成功找到之后，再在第二个参数拥有的第三参数列表中检索第三个参数。使用这种一个表作为另一个表的索引的形式，并依次迭代下去。</p><p> 想到这里的时候，我隐隐约约感觉哪里不对，(:з」∠)，恩……似乎和使用元表不停的迭代<code>__index</code>没有区别了（某种意义上，似乎加深了我对元表的理解）。于是，最后决定试着用元表去实现Lua的函数重载，函数的索引也顺理成章地选择使用每个入参的参数类型。<br>那么，怎么样才能实现函数名与函数入参类型在定义时自己注册进元表中呢，使用__newindex吗？如果是的话，又要怎么样一层一层迭代地注册进元表中呢？我在这里卡住了。一通查找后，我在wiki上发现了这篇文章：<br><a href="http://lua-users.org/wiki/OverloadedFunctions" target="_blank" rel="noopener">Overload Functions lua users wiki</a><br>于是，我模仿wiki上的写法，实现了一个函数重载的脚本。</p><h3 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h3><pre><code class="Lua">local OverloadModule={}-- privatelocal funcList={}local mt={}-- 作用： 错误处理local function perror()    return error(&quot;Invalid argument types to overload function.&quot;)end--作用：（相同函数名+入参不同）的调用触发在funcList中依据入参列表的类型查找有无对应函数function mt:__call(...)    local default=self.default    local paramTypeList={} --用于存放入参类型的列表    for i,param in ipairs({...}) do        paramTypeList[i]=type(param)    end    paramTypeList=table.concat(paramTypeList,&quot;,&quot;)    return (funcList[paramTypeList]or self.default)(...)end-- 作用：多个入参重载时，由于前面的索引是通过检索操作触发的，会进入__index函数function mt:__index(key)    local paramTypeList={} --用于存放入参类型的列表    -- 多参数配置时，最后一个参数的入口，因为最后一个索引操作相当于是在给该索引赋值一个函数    -- 该函数不能写在__index下面，因为__index里要注册该函数为最后一个入参的赋值函数    local function __newindex(self,key,value)        print(&quot;\nThe Last param is &quot;..key..&quot;. No Same input-params-func in List,Add a new-Input-Param-Types-function.&quot;)        paramTypeList[#paramTypeList+1]=key        funcList[table.concat(paramTypeList, &quot;,&quot;)]=value --将该入参列表设置为当前注册的函数        print(&quot;Overload a new function with input-params are:&quot;..&quot;(&quot;..table.concat(paramTypeList, &quot;,&quot;)..&quot;)&quot;)    end    -- 多参数配置时，除最后一个参数外的入口，因为设置前面参数的操作本质上是索引self    local function __index(self,key)        print(&quot;\nSearching &quot;..tostring(self)..&quot; with next param type is &quot;..key)        -- 存储当前的入参，然后为其申请它的next-param查找列表,检索方式和现在相同，所以为其配置同样操作的元表        paramTypeList[#paramTypeList+1]=key        local nextParamSearchTable={}        print(&quot;and Next Search Table is &quot;..tostring(nextParamSearchTable))        return setmetatable(nextParamSearchTable,{__index=__index,__newindex=__newindex})    end    return __index(self,key)end-- 作用：单个入参重载时，直接设置key,valuefunction mt:__newindex(key,value)    funcList[key]=value    print(&quot;Overload a new function with input-params are:&quot;..&quot;(&quot;..key..&quot;)&quot;)end-- public-- 作用：new函数返回一个可以进行重载功能的表function OverloadModule:new()    return setmetatable({default=perror}, mt)endreturn OverloadModule</code></pre><h3 id="代码验证"><a href="#代码验证" class="headerlink" title="代码验证"></a>代码验证</h3><p>然后是简单的测试和输出结果。<strong>（配置为MacOS10.14.2+Sublime3.1.1+Lua5.1）</strong></p><pre><code class="lua">local overloader=require(&quot;OverloadModule&quot;)local newItem=overloader:new()function newItem.table(item)    print(&quot;Creating by copy a item.&quot;)endfunction newItem.string(name)    print(&quot;Create a item by name.&quot;)endfunction newItem.string.boolean.number.string(name,canSell,price,descrp)    print(&quot;Create a item by name and its price(if can be sold) with description.&quot;)endprint(&quot;\n&quot;)newItem(&quot;MagicBook&quot;,true,100,&quot;This is a MagicBook.&quot;)</code></pre><h4 id="Output"><a href="#Output" class="headerlink" title="Output"></a>Output</h4><pre><code>Overload a new function with input-params are:(table)Overload a new function with input-params are:(string)Searching table: 0x7faa7ec0b460 with next param type is stringand Next Search Table is table: 0x7faa7ec03150Searching table: 0x7faa7ec03150 with next param type is booleanand Next Search Table is table: 0x7faa7ec0b730Searching table: 0x7faa7ec0b730 with next param type is numberand Next Search Table is table: 0x7faa7ec0b950The Last param is string. No Same input-params-func in List,Add a new-Input-Param-Types-function.Overload a new function with input-params are:(string,boolean,number,string)Create a item by name and its price(if can be sold) with description.[Finished in 0.0s]</code></pre><h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h3><p>这样就实现了一个item类的使用item对象构造，使用名称构造，使用item字段构造（第三个完全可以传一个表进入，所以才说这个功能完全没有用啊，只是练习了使用元表而已）等多种构造函数的Lua函数重载。</p>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>Lua</tag>
+      
+      <tag>C</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>pip安装失败错误解决</title>
+    <link href="/2016/12/29/pip%E5%AE%89%E8%A3%85%E5%A4%B1%E8%B4%A5%E9%94%99%E8%AF%AF%E8%A7%A3%E5%86%B3/"/>
+    <url>/2016/12/29/pip%E5%AE%89%E8%A3%85%E5%A4%B1%E8%B4%A5%E9%94%99%E8%AF%AF%E8%A7%A3%E5%86%B3/</url>
+    
+    <content type="html"><![CDATA[<h3 id="为什么要配置多版本的Python"><a href="#为什么要配置多版本的Python" class="headerlink" title="为什么要配置多版本的Python"></a>为什么要配置多版本的Python</h3><p>最近刚刚开始看python和opencv，发现很多书上的例子用的是python2.7，而比较新的一些库又只有python3版本，而在Linux系统下使用pip对不同版本包进行升级的时候又难免会出现一些错误。所以，兼容python2和python3对练习来说十分重要。</p><h3 id="Python多版本如何实现"><a href="#Python多版本如何实现" class="headerlink" title="Python多版本如何实现"></a>Python多版本如何实现</h3><h4 id="Pyenv工具"><a href="#Pyenv工具" class="headerlink" title="Pyenv工具"></a>Pyenv工具</h4><p>pyenv是可以实现改变全局，局部场景的python版本管理工具。而且，由于该工具对python各版本设置对应目录，通过<strong>变更环境变量</strong>到对应目录即可实现多版本python的使用。而且，在版本控制时，shell命令十分简洁，只需要管理<code>virtual python environments</code>的对应命令,而不需要使用向诸如<code>chown $(whoami):admin</code>和<code>sudo</code>之类的Linux权限命令。</p><blockquote><p>它并没有使用将不同的 <code>PATH</code>植入不同的shell这种高耦合的工作方式，而是简单地在PATH植入不同的shell这种高耦合的工作方式，而是简单地在PATH 的最前面插入了一个垫片路径（shims）：<code>~/.pyenv/shims:/usr/local/bin:/usr/bin:/bin</code>。所有对 Python 可执行文件的查找都会首先被这个 <code>shims</code> 路径截获，从而使后方的系统路径失效。</p></blockquote><h4 id="Pyenv的安装与使用"><a href="#Pyenv的安装与使用" class="headerlink" title="Pyenv的安装与使用"></a>Pyenv的安装与使用</h4><ul><li>安装<code>pyenv</code><br>先安装<a href>Homebrew</a>，再使用该命令<code>brew install pyenv</code>来安装pyenv，如果<code>openssl</code>没有出现什么问题的话，大概率是可以直接安装成功的。安装完成后，需要将如下语句加入环境配置文件，博主用的是<code>zsh</code>，所以是添加进<code>.zshrc</code>文件中，如果是使用<code>bash</code>的人，应该将对应语句添加进<code>.bashrc</code>。需要注意的是环境变量路径带不带双引号应该以对应的shell脚本为准。（<em>这里zsh并不需要加双引号</em>）,完成后使用<code>source</code>生效。当输入<code>pyenv --version</code>命令后出现pyenv版本则说明安装成功。</li></ul><pre><code class="bash">#不放心的话，可以直接使用vim进行添加echo &#39;export PYENV_ROOT=$HOME/.pyenv&#39; &gt;&gt; ~/.zshrcecho &#39;export PATH=$PYENV_ROOT/bin:$PATH&#39; &gt;&gt; ~/.zshrcecho &#39;eval &quot;$(pyenv init -)&quot;&#39; &gt;&gt; ~/.zshrcsource ~/.zshrc</code></pre><ul><li><p>pyenv查看版本及下载命令</p><ul><li><code>pyenv versions</code> ：查看当前系统使用该工具安装了哪些版本的python，<strong>version没有–，不要和查看pyenv本身的版本搞混</strong>，如果还未安装版本，终端就会出现<code>* system (set by /Users/$(whoiam)/.pyenv/version)</code>且下方没有任何版本号。</li><li><code>pyenv install -l</code> ：查看可安装的版本列表，且使用<code>pyenv install &lt;a version in list&gt;</code>命令即可安装。</li></ul></li><li><p>使用镜像解决下载时出现<code>BUILD FAILED</code>问题<br>下载时，pyenv会直接从网站拽取<code>tar.xz</code>的版本压缩包，10M+左右，但由于墙的存在，导致下载十分容易失败。所以这里推荐使用<a href="https://npm.taobao.org/mirrors/python/" target="_blank" rel="noopener">阿里的镜像源</a>选择要下载的版本，并将下载好的<code>tar.xz</code>文件放入<code>.pyenv/cache</code>中，再重新输入<code>pyenv install &lt;the downloaded version&gt;</code>安装即可。</p></li></ul><p>或者直接使用一键式命令<code>export v=3.5.0 | wget https://npm.taobao.org/mirrors/python/$v/Python-$v.tar.xz -P ~/.pyenv/cache/; pyenv install $v</code><br>安装完成后，再重新查看python版本即可：</p><pre><code class="bash">$pyenv versions* system (set by /Users/c6h12yith/.pyenv/version)  2.7.3  3.5.0</code></pre><h3 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h3><ul><li><a href="http://mirrors.sohu.com/python/" target="_blank" rel="noopener">搜狐的镜像源</a></li></ul>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>Bug</tag>
+      
+      <tag>Python</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  
+</search>

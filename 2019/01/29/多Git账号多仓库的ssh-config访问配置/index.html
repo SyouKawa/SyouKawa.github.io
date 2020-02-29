@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="/img/favicon.png">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="description" content="(*´▽｀)ノノ你好啊~">
+  <meta name="author" content="c6h12yith">
+  <meta name="keywords" content="">
+  <title>多Git账号多仓库的ssh_config访问配置 ~ A Road To Nil</title>
+
+  <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/5.12.1/css/all.min.css"  >
+<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/css/bootstrap.min.css"  >
+<link rel="stylesheet" href="https://cdn.staticfile.org/mdbootstrap/4.13.0/css/mdb.min.css"  >
+<link rel="stylesheet" href="https://cdn.staticfile.org/github-markdown-css/3.0.1/github-markdown.min.css"  >
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1067060_qzomjdt8bmp.css">
+
+
+
+  <link rel="stylesheet" href="/lib/prettify/tomorrow-night-eighties.min.css"  >
+
+<link rel="stylesheet" href="/css/main.css"  >
+
+
+  <link rel="stylesheet" href="https://cdn.staticfile.org/fancybox/3.5.7/jquery.fancybox.min.css"  >
+
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>A Road To Nil</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/">Home</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/archives/">Archives</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/categories/">Categories</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/tags/">Tags</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/about/">About</a>
+          </li>
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" data-toggle="modal" data-target="#modalSearch">&nbsp;&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="view intro-2" id="background" false
+         style="background: url('/img/bg.jpg') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask rgba-black-light flex-center">
+          <div class="container text-center white-text fadeInUp">
+            <span class="h2" id="subtitle">
+              
+            </span>
+
+            
+              <br>
+              
+                <p class="mt-3">
+                  <i class="fas fa-calendar-alt" aria-hidden="true"></i>&nbsp;
+                  Tuesday, January 29th 2019, 10:07 pm
+                </p>
+              
+
+              <p>
+                
+                  
+                  &nbsp;<i class="far fa-chart-bar"></i>
+                  <span class="post-count">
+                    1.3k 字
+                  </span>&nbsp;
+                
+
+                
+                  
+                  &nbsp;<i class="far fa-clock"></i>
+                  <span class="post-count">
+                      4 分钟
+                  </span>&nbsp;
+                
+
+                
+                  <!-- 不蒜子统计文章PV -->
+                  
+                  &nbsp;<i class="far fa-eye" aria-hidden="true"></i>&nbsp;
+                  <span id="busuanzi_container_page_pv">
+                    <span id="busuanzi_value_page_pv"></span> 次
+                  </span>&nbsp;
+                
+              </p>
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-md">
+      <div class="py-5 z-depth-3" id="board">
+        <div class="post-content mx-auto" id="post">
+          <div class="markdown-body">
+            <h3 id="引言"><a href="#引言" class="headerlink" title="引言"></a>引言</h3><p>在进公司实习之前，虽然为了方便存储自己的练习代码，配置了Github的ssh，但电脑上的ssh也只有自己的私人账户，而且刚进公司的时候项目组的大部分东西都还在svn上，两者不冲突不打架，就没怎么考虑过config配置ssh的问题。最近大规模迁移到gitlab和独立域名的时候，查看推送的时候发现显示推送对象是私人账号，而且有时会出现<code>Permission Denied</code>的情况，于是便开始补课ssh-config,总结成这篇博客，希望可以加深自己的印象。</p>
+<h3 id="生成公私钥并配置到Github账户"><a href="#生成公私钥并配置到Github账户" class="headerlink" title="生成公私钥并配置到Github账户"></a>生成公私钥并配置到Github账户</h3><h4 id="防止覆盖地以邮箱生成rsa类型的公私钥"><a href="#防止覆盖地以邮箱生成rsa类型的公私钥" class="headerlink" title="防止覆盖地以邮箱生成rsa类型的公私钥"></a>防止覆盖地以邮箱生成rsa类型的公私钥</h4><pre><code class="bash">ssh-keygen -t rsa -C &quot;emailaddress@example.com&quot; -f keyname</code></pre>
+<p>由于使用vim打开复制时存在vim自动添加的\t，加入Github的ssh配置时如果不想自己手动删掉，可以使用Sublime打开。但由于Sublime在默认的<code>/Applications</code>下没有直接使用命令行打开的连接，所以需要手动设置之后再使用Sublime打开。</p>
+<pre><code class="bash">ln -s /Applications/Sublime\ Text.app/Contents/SharedSupport/bin/subl /usr/local/bin/sublime</code></pre>
+<p>之后就可以在终端用命令启动sublime了SublimeCommand启动文档代码。使用config文件对不同的仓库配置相应的sshKey。</p>
+<h4 id="较多账户常见的状况"><a href="#较多账户常见的状况" class="headerlink" title="较多账户常见的状况"></a>较多账户常见的状况</h4><ol>
+<li>公司使用独立域名了的云服务器上的Git仓库（<strong>公司配给的账号</strong>）</li>
+<li>公司在Github上拥有公开的项目或GitLab上项目的拷贝（<strong>个人独立账号，公司配给账号均可</strong>）</li>
+<li>基于以上情况，自己又拥有对应Git站点账号，频繁登陆GitLab、Bitbucket或Github等个人仓库（<strong>个人独立账户</strong>）</li>
+<li>拥有<strong>同一网站的多个账号</strong>并需要对不同账号所属的仓库进行push操作同网站多账号进行push操作时的<code>Permission denied</code>由于登陆github时，会检查对应账号下是否存在ssh的公钥权限。所以需要配置<code>git config</code>文件。</li>
+</ol>
+<pre><code class="git">git config --global user.name &quot;Github Login Name&quot;
+git config --global user.email &quot;Github_Login@E-mail.com&quot;</code></pre>
+<p>并使用<code>git config --global --list</code>检查配置，该设置成功时使用<code>ssh -T git@github.com</code>时，出现的提示信息<code>Hi,XXX!</code>使用的称谓即为Github账号名。但该操作容易导致常见状况的No.4出现Permission denied的情况。处理方式是使用<code>git config –local</code>解决多账号冲突。</p>
+<h4 id="公司的一个项目拥有多个仓库地址（不同站点的同一项目）"><a href="#公司的一个项目拥有多个仓库地址（不同站点的同一项目）" class="headerlink" title="公司的一个项目拥有多个仓库地址（不同站点的同一项目）"></a>公司的一个项目拥有多个仓库地址（不同站点的同一项目）</h4><ol>
+<li><strong>使用公司账号配置该账号在config中的设置</strong><ul>
+<li>192.168.1.1</li>
+<li>127.0.0.1</li>
+<li><a href="http://www.company.middle.com" target="_blank" rel="noopener">www.company.middle.com</a></li>
+<li>GitLab</li>
+<li>… …</li>
+</ul>
+</li>
+</ol>
+<p>假设公司的某一项目在上述地址拥有项目的拷贝。那么在.ssh中的config设置中，可以配置相同的sshkey(下方最后的gitLabCompanyAccount主要是为能在clone的时候和个人账户区分开，保证ssh检查权限时检查对应的配置文件，详见同网站不同账号的不同仓库项目配置)</p>
+<ol start="2">
+<li><strong>config文件</strong></li>
+</ol>
+<pre><code class="bash">Host 192Repo
+    HostName https://192.168.1.1
+    User git
+    IdentityFile ~/.ssh/id_rsa_company
+
+Host 127Repo
+    HostName https://127.0.0.1
+    User git
+    IdentityFile ~/.ssh/id_rsa_company
+
+Host company
+    HostName https://www.company.middle.com
+    User git
+    IdentityFile ~/.ssh/id_rsa_company
+
+Host gitLabCompanyAccount
+    HostName https://www.gitlab.com/companyRepo
+    User git
+    IdentityFile ~/.ssh/id_rsa_company</code></pre>
+<ol start="3">
+<li><strong>使用拥有公司权限的git账号添加不同的仓库地址进行推送</strong>时，可以使用<code>git remote add newRepoName Host:RepoName.git</code>将这些仓库都加入引用，方便统一push，也可以手动变成<code>.git/.config</code>中的origin方便在缺省的情况下全部推送。<h4 id="同网站不同账号的不同仓库权限问题"><a href="#同网站不同账号的不同仓库权限问题" class="headerlink" title="同网站不同账号的不同仓库权限问题"></a>同网站不同账号的不同仓库权限问题</h4>此情况适用于形如：GitHub下有公司账号，自己的多个私人账号，此时又不希望多个账号之间的ssh相互冲突。可以设置不同的Host名称，在clone时使用Host名称进行操作，保证权限检查的正确。以上面最后一个情况+私人账号为例，可以做如下配置：</li>
+</ol>
+<pre><code class="bash">Host gitLabCompanyAccount
+    HostName https://www.gitlab.com/companyRepo
+    User git
+    IdentityFile ~/.ssh/id_rsa_company
+
+Host gitLabAccount001Name
+    HostName https://www.gitlab.com/privateAccount001
+    User git
+    IdentityFile ~/.ssh/id_rsa_privateAccount001
+
+Host githubAccount01Name
+    HostName https://www.github.com/git01Name
+    User git
+    IdentityFile ~/.ssh/id_rsa_git001
+
+Host gitLabAccount02Name
+    HostName https://www.github.com/git02Name
+    User git
+    IdentityFile ~/.ssh/id_rsa_git001</code></pre>
+<ol>
+<li>前两个是同在GitLab下时，使用相应账号生成的ssh公钥配置的一个公司账号一个私人账号，后两个是Github下的两个私人账号。HostName中网站后面加上对应的用户名来确保不会有任何一个ssh覆盖到Github或者GitLab的全局ssh权限设置，因为每个Host都只管对应的账号或者仓库。</li>
+<li>使用配置时：克隆公司项目时可以使用<code>git clone gitLabCompanyAccount：SubRepoName.git</code>,而操作自己的私人账号则可以使用<code>git clone gitLabAccount001Name:SubRepoName.git</code></li>
+</ol>
+<h3 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h3><p>虽然这次知道怎么用了，但究其<code>ssh-config</code>检验机制的原理和实现流程还是处于似是而非的阶段。打算这次春节的时候，再好好学习一下.</p>
+
+            <hr>
+          </div>
+          <br>
+          <div>
+            <p>
+            
+            
+              <span>
+                <i class="iconfont icon-tag"></i>
+                
+                  <a class="hover-with-bg" href="/tags/%E7%89%88%E6%9C%AC%E7%AE%A1%E7%90%86/">版本管理</a>
+                
+                  <a class="hover-with-bg" href="/tags/Git/">Git</a>
+                
+              </span>
+            
+            </p>
+            
+              <p class="note note-warning">本博客所有文章除特别声明外，均采用 <a href="https://zh.wikipedia.org/wiki/Wikipedia:CC_BY-SA_3.0%E5%8D%8F%E8%AE%AE%E6%96%87%E6%9C%AC" target="_blank" rel="nofollow noopener noopener">CC BY-SA 3.0协议</a> 。转载请注明出处！</p>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container">
+        <div id="toc">
+  <p class="h5"><i class="far fa-list-alt"></i>&nbsp;TOC</p>
+  <div id="tocbot"></div>
+</div>
+      </div>
+    
+  </div>
+</div>
+
+<!-- custom -->
+
+
+<!-- Comments -->
+<div class="col-lg-7 mx-auto nopadding-md">
+  <div class="container comments mx-auto" id="comments">
+    
+  </div>
+</div>
+
+    
+  </main>
+
+  
+    <a class="z-depth-1" id="scroll-top-button" href="#" role="button">
+      <i class="fa fa-chevron-up scroll-top-arrow" aria-hidden="true"></i>
+    </a>
+  
+
+  
+    <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+  
+
+  <footer class="mt-5">
+  <div class="text-center py-3">
+    <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><b>Hexo</b></a>
+    <i class="iconfont icon-love"></i>
+    <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"> <b>Fluid</b></a>
+    <br>
+
+    
+  
+    <!-- 不蒜子统计PV -->
+    
+    &nbsp;<span id="busuanzi_container_site_pv"></span>总访问量 
+          <span id="busuanzi_value_site_pv"></span> 次&nbsp;
+  
+  
+    <!-- 不蒜子统计UV -->
+    
+    &nbsp;<span id="busuanzi_container_site_uv"></span>总访客数 
+            <span id="busuanzi_value_site_uv"></span> 人&nbsp;
+  
+  <br>
+
+
+
+    
+
+
+    <!-- cnzz Analytics icon -->
+    
+
+  </div>
+</footer>
+
+<!-- SCRIPTS -->
+<script src="https://cdn.staticfile.org/jquery/3.4.1/jquery.min.js" ></script>
+<script src="https://cdn.staticfile.org/popper.js/1.16.1/umd/popper.min.js" ></script>
+<script src="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/js/bootstrap.min.js" ></script>
+<script src="https://cdn.staticfile.org/mdbootstrap/4.13.0/js/mdb.min.js" ></script>
+<script src="/js/main.js" ></script>
+
+
+  <script src="/js/lazyload.js" ></script>
+
+
+
+  
+  <script src="https://cdn.staticfile.org/tocbot/4.10.0/tocbot.min.js" ></script>
+  <script>
+    $(document).ready(function () {
+      var navHeight = $('#navbar').height();
+      var toc = $('#toc');
+      var main = $('main');
+      var tocT = navHeight + (toc.offset().top - main.offset().top);
+      var tocLimMin = main.offset().top - navHeight;
+      var tocLimMax = $('#comments').offset().top - navHeight;
+      $(window).scroll(function () {
+        var scroH = document.body.scrollTop + document.documentElement.scrollTop;
+        if (tocLimMin <= scroH && scroH <= tocLimMax) {
+          toc.css({
+            'display': 'block',
+            'position': 'fixed',
+            'top': tocT,
+          });
+        } else if (scroH <= tocLimMin) {
+          toc.css({
+            'position': '',
+            'top': '',
+          });
+        } else if (scroH > tocLimMax) {
+          toc.css('display', 'none');
+        }
+      });
+      tocbot.init({
+        tocSelector: '#tocbot',
+        contentSelector: '.post-content',
+        headingSelector: 'h1,h2,h3,h4,h5,h6',
+        linkClass: 'tocbot-link',
+        activeLinkClass: 'tocbot-active-link',
+        listClass: 'tocbot-list',
+        isCollapsedClass: 'tocbot-is-collapsed',
+        collapsibleClass: 'tocbot-is-collapsible',
+        scrollSmooth: true,
+      });
+      if ($('.toc-list-item').length > 0) {
+        $('#toc > p').css('visibility', 'visible');
+      }
+    });
+  </script>
+
+
+
+
+
+
+
+  <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+<!-- Plugins -->
+
+
+
+  <script src="https://cdn.staticfile.org/prettify/188.0.0/prettify.min.js" ></script>
+  <script>
+    $(document).ready(function () {
+      $('pre').addClass('prettyprint  ');
+      prettyPrint();
+    })
+  </script>
+
+
+
+  <script src="https://cdn.staticfile.org/typed.js/2.0.11/typed.min.js" ></script>
+  <script>
+    var typed = new Typed('#subtitle', {
+      strings: [
+        '  ',
+        "多Git账号多仓库的ssh_config访问配置&nbsp;",
+      ],
+      cursorChar: "|",
+      typeSpeed: 90,
+      loop: false,
+    });
+    typed.stop();
+    $(document).ready(function () {
+      $(".typed-cursor").addClass("h2");
+      typed.start();
+    });
+  </script>
+
+
+
+  <script src="https://cdn.staticfile.org/anchor-js/4.2.2/anchor.min.js" ></script>
+  <script>
+    anchors.options = {
+      placement: "right",
+      visible: "hover",
+      
+    };
+    var el = "h1,h2,h3,h4,h5,h6".split(",");
+    var res = [];
+    for (item of el) {
+      res.push(".markdown-body > " + item)
+    }
+    anchors.add(res.join(", "))
+  </script>
+
+
+
+  <script src="/js/local-search.js" ></script>
+  <script>
+    var path = "/local-search.xml";
+    var inputArea = document.querySelector("#local-search-input");
+    inputArea.onclick = function () {
+      getSearchFile(path);
+      this.onclick = null
+    }
+  </script>
+
+
+
+  <script src="https://cdn.staticfile.org/fancybox/3.5.7/jquery.fancybox.min.js" ></script>
+  <script>
+    $("#post img:not(.no-zoom img, img[no-zoom])").each(
+      function () {
+        var element = document.createElement("a");
+        $(element).attr("data-fancybox", "images");
+        $(element).attr("href", $(this).attr("src"));
+        $(this).wrap(element);
+      }
+    );
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+  
+<script src="/live2d-widget/autoload.js"></script>
+
+
+</body>
+</html>

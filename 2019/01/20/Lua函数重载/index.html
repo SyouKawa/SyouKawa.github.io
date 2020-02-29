@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="/img/favicon.png">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="description" content="(*´▽｀)ノノ你好啊~">
+  <meta name="author" content="c6h12yith">
+  <meta name="keywords" content="">
+  <title>Lua函数重载 ~ A Road To Nil</title>
+
+  <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/5.12.1/css/all.min.css"  >
+<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/css/bootstrap.min.css"  >
+<link rel="stylesheet" href="https://cdn.staticfile.org/mdbootstrap/4.13.0/css/mdb.min.css"  >
+<link rel="stylesheet" href="https://cdn.staticfile.org/github-markdown-css/3.0.1/github-markdown.min.css"  >
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1067060_qzomjdt8bmp.css">
+
+
+
+  <link rel="stylesheet" href="/lib/prettify/tomorrow-night-eighties.min.css"  >
+
+<link rel="stylesheet" href="/css/main.css"  >
+
+
+  <link rel="stylesheet" href="https://cdn.staticfile.org/fancybox/3.5.7/jquery.fancybox.min.css"  >
+
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>A Road To Nil</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/">Home</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/archives/">Archives</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/categories/">Categories</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/tags/">Tags</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/about/">About</a>
+          </li>
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" data-toggle="modal" data-target="#modalSearch">&nbsp;&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="view intro-2" id="background" false
+         style="background: url('/img/bg.jpg') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask rgba-black-light flex-center">
+          <div class="container text-center white-text fadeInUp">
+            <span class="h2" id="subtitle">
+              
+            </span>
+
+            
+              <br>
+              
+                <p class="mt-3">
+                  <i class="fas fa-calendar-alt" aria-hidden="true"></i>&nbsp;
+                  Sunday, January 20th 2019, 10:26 pm
+                </p>
+              
+
+              <p>
+                
+                  
+                  &nbsp;<i class="far fa-chart-bar"></i>
+                  <span class="post-count">
+                    1.6k 字
+                  </span>&nbsp;
+                
+
+                
+                  
+                  &nbsp;<i class="far fa-clock"></i>
+                  <span class="post-count">
+                      6 分钟
+                  </span>&nbsp;
+                
+
+                
+                  <!-- 不蒜子统计文章PV -->
+                  
+                  &nbsp;<i class="far fa-eye" aria-hidden="true"></i>&nbsp;
+                  <span id="busuanzi_container_page_pv">
+                    <span id="busuanzi_value_page_pv"></span> 次
+                  </span>&nbsp;
+                
+              </p>
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-md">
+      <div class="py-5 z-depth-3" id="board">
+        <div class="post-content mx-auto" id="post">
+          <div class="markdown-body">
+            <h3 id="想法和思路"><a href="#想法和思路" class="headerlink" title="想法和思路"></a>想法和思路</h3><p>在最近学习lua面向对象的时候，在想可不可以为一个类实现多个构造函数或者是<code>new</code>，也就是传统意义上的函数重载。尽管没有什么没有什么实际用途，毕竟想要实现同名函数的不同入参，只要入参的表内容不同即可。于是，这个问题就变成了有没有什么办法可以在Lua中从形式上实现和静态语言(比如C++)类似的函数重载。</p>
+<a id="more"></a>
+
+<p>一开始思考的时候，根据lua面向对象的方式，会考虑使用元表。即：如果根据条件判断出_当前的<code>ctor</code>函数或者<code>new</code>函数的入参形式和传参不同，就向<code>metatable</code>中的<code>__index</code>检索。然后我就有些犹豫，虽然很难会出现有10个以上的<code>ctor</code>或者<code>new</code>函数的情况，但如果出现了，那不是就会变成<code>__index</code>检索到<code>__index</code>这样不停迭代的情况吗，难道真的要这样实现？也许是我思考的方向不对。</p>
+<p>于是我就换了一种思路，比如：是都存在一个表中，当要调用的时候遍历该表，用以查找同入参的函数。为了尽可能地减少搜索时间，表可以使用入参从多到少或从少到多排序，同数量的入参再根据类型排序。但这样的实现方式，依旧存在问题：</p>
+<p>如果<code>number</code>类型在同参数数量根据类型继续排序时，根据类型(假如类型的先后是根据类型首字母的ASCII码大小)排在了string之前，那么后者要花费的检索时间要比前者长。这种情况也很麻烦，所有的函数应该是平级的。那么，如果想要平级，就需要在检测到第一个参数类型的时候，去第一个参数类型所存的后续列表中查找，类似于散列的思想，在第一个参数和第二个参数成功找到之后，再在第二个参数拥有的第三参数列表中检索第三个参数。使用这种一个表作为另一个表的索引的形式，并依次迭代下去。</p>
+<p> 想到这里的时候，我隐隐约约感觉哪里不对，(:з」∠)，恩……似乎和使用元表不停的迭代<code>__index</code>没有区别了（某种意义上，似乎加深了我对元表的理解）。于是，最后决定试着用元表去实现Lua的函数重载，函数的索引也顺理成章地选择使用每个入参的参数类型。<br>那么，怎么样才能实现函数名与函数入参类型在定义时自己注册进元表中呢，使用__newindex吗？如果是的话，又要怎么样一层一层迭代地注册进元表中呢？我在这里卡住了。一通查找后，我在wiki上发现了这篇文章：<br><a href="http://lua-users.org/wiki/OverloadedFunctions" target="_blank" rel="noopener">Overload Functions lua users wiki</a><br>于是，我模仿wiki上的写法，实现了一个函数重载的脚本。</p>
+<h3 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h3><pre><code class="Lua">local OverloadModule={}
+
+-- private
+local funcList={}
+local mt={}
+
+-- 作用： 错误处理
+local function perror()
+    return error(&quot;Invalid argument types to overload function.&quot;)
+end
+
+--作用：（相同函数名+入参不同）的调用触发在funcList中依据入参列表的类型查找有无对应函数
+function mt:__call(...)
+    local default=self.default
+    local paramTypeList={} --用于存放入参类型的列表
+    for i,param in ipairs({...}) do
+        paramTypeList[i]=type(param)
+    end
+    paramTypeList=table.concat(paramTypeList,&quot;,&quot;)
+    return (funcList[paramTypeList]or self.default)(...)
+end
+
+-- 作用：多个入参重载时，由于前面的索引是通过检索操作触发的，会进入__index函数
+function mt:__index(key)
+
+    local paramTypeList={} --用于存放入参类型的列表
+
+    -- 多参数配置时，最后一个参数的入口，因为最后一个索引操作相当于是在给该索引赋值一个函数
+    -- 该函数不能写在__index下面，因为__index里要注册该函数为最后一个入参的赋值函数
+    local function __newindex(self,key,value)
+        print(&quot;\nThe Last param is &quot;..key..&quot;. No Same input-params-func in List,Add a new-Input-Param-Types-function.&quot;)
+        paramTypeList[#paramTypeList+1]=key
+        funcList[table.concat(paramTypeList, &quot;,&quot;)]=value --将该入参列表设置为当前注册的函数
+        print(&quot;Overload a new function with input-params are:&quot;..&quot;(&quot;..table.concat(paramTypeList, &quot;,&quot;)..&quot;)&quot;)
+    end
+
+    -- 多参数配置时，除最后一个参数外的入口，因为设置前面参数的操作本质上是索引self
+    local function __index(self,key)
+        print(&quot;\nSearching &quot;..tostring(self)..&quot; with next param type is &quot;..key)
+        -- 存储当前的入参，然后为其申请它的next-param查找列表,检索方式和现在相同，所以为其配置同样操作的元表
+        paramTypeList[#paramTypeList+1]=key
+        local nextParamSearchTable={}
+        print(&quot;and Next Search Table is &quot;..tostring(nextParamSearchTable))
+        return setmetatable(nextParamSearchTable,{__index=__index,__newindex=__newindex})
+    end
+    return __index(self,key)
+end
+-- 作用：单个入参重载时，直接设置key,value
+function mt:__newindex(key,value)
+    funcList[key]=value
+    print(&quot;Overload a new function with input-params are:&quot;..&quot;(&quot;..key..&quot;)&quot;)
+end
+
+-- public
+
+-- 作用：new函数返回一个可以进行重载功能的表
+function OverloadModule:new()
+    return setmetatable({default=perror}, mt)
+end
+
+return OverloadModule</code></pre>
+<h3 id="代码验证"><a href="#代码验证" class="headerlink" title="代码验证"></a>代码验证</h3><p>然后是简单的测试和输出结果。<strong>（配置为MacOS10.14.2+Sublime3.1.1+Lua5.1）</strong></p>
+<pre><code class="lua">local overloader=require(&quot;OverloadModule&quot;)
+
+local newItem=overloader:new()
+
+function newItem.table(item)
+    print(&quot;Creating by copy a item.&quot;)
+end
+
+function newItem.string(name)
+    print(&quot;Create a item by name.&quot;)
+end
+
+function newItem.string.boolean.number.string(name,canSell,price,descrp)
+    print(&quot;Create a item by name and its price(if can be sold) with description.&quot;)
+end
+
+print(&quot;\n&quot;)
+newItem(&quot;MagicBook&quot;,true,100,&quot;This is a MagicBook.&quot;)</code></pre>
+<h4 id="Output"><a href="#Output" class="headerlink" title="Output"></a>Output</h4><pre><code>Overload a new function with input-params are:(table)
+Overload a new function with input-params are:(string)
+
+Searching table: 0x7faa7ec0b460 with next param type is string
+and Next Search Table is table: 0x7faa7ec03150
+
+Searching table: 0x7faa7ec03150 with next param type is boolean
+and Next Search Table is table: 0x7faa7ec0b730
+
+Searching table: 0x7faa7ec0b730 with next param type is number
+and Next Search Table is table: 0x7faa7ec0b950
+
+The Last param is string. No Same input-params-func in List,Add a new-Input-Param-Types-function.
+Overload a new function with input-params are:(string,boolean,number,string)
+
+
+Create a item by name and its price(if can be sold) with description.
+[Finished in 0.0s]</code></pre><h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h3><p>这样就实现了一个item类的使用item对象构造，使用名称构造，使用item字段构造（第三个完全可以传一个表进入，所以才说这个功能完全没有用啊，只是练习了使用元表而已）等多种构造函数的Lua函数重载。</p>
+
+            <hr>
+          </div>
+          <br>
+          <div>
+            <p>
+            
+            
+              <span>
+                <i class="iconfont icon-tag"></i>
+                
+                  <a class="hover-with-bg" href="/tags/Lua/">Lua</a>
+                
+                  <a class="hover-with-bg" href="/tags/C/">C</a>
+                
+              </span>
+            
+            </p>
+            
+              <p class="note note-warning">本博客所有文章除特别声明外，均采用 <a href="https://zh.wikipedia.org/wiki/Wikipedia:CC_BY-SA_3.0%E5%8D%8F%E8%AE%AE%E6%96%87%E6%9C%AC" target="_blank" rel="nofollow noopener noopener">CC BY-SA 3.0协议</a> 。转载请注明出处！</p>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container">
+        <div id="toc">
+  <p class="h5"><i class="far fa-list-alt"></i>&nbsp;TOC</p>
+  <div id="tocbot"></div>
+</div>
+      </div>
+    
+  </div>
+</div>
+
+<!-- custom -->
+
+
+<!-- Comments -->
+<div class="col-lg-7 mx-auto nopadding-md">
+  <div class="container comments mx-auto" id="comments">
+    
+  </div>
+</div>
+
+    
+  </main>
+
+  
+    <a class="z-depth-1" id="scroll-top-button" href="#" role="button">
+      <i class="fa fa-chevron-up scroll-top-arrow" aria-hidden="true"></i>
+    </a>
+  
+
+  
+    <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+  
+
+  <footer class="mt-5">
+  <div class="text-center py-3">
+    <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><b>Hexo</b></a>
+    <i class="iconfont icon-love"></i>
+    <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"> <b>Fluid</b></a>
+    <br>
+
+    
+  
+    <!-- 不蒜子统计PV -->
+    
+    &nbsp;<span id="busuanzi_container_site_pv"></span>总访问量 
+          <span id="busuanzi_value_site_pv"></span> 次&nbsp;
+  
+  
+    <!-- 不蒜子统计UV -->
+    
+    &nbsp;<span id="busuanzi_container_site_uv"></span>总访客数 
+            <span id="busuanzi_value_site_uv"></span> 人&nbsp;
+  
+  <br>
+
+
+
+    
+
+
+    <!-- cnzz Analytics icon -->
+    
+
+  </div>
+</footer>
+
+<!-- SCRIPTS -->
+<script src="https://cdn.staticfile.org/jquery/3.4.1/jquery.min.js" ></script>
+<script src="https://cdn.staticfile.org/popper.js/1.16.1/umd/popper.min.js" ></script>
+<script src="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/js/bootstrap.min.js" ></script>
+<script src="https://cdn.staticfile.org/mdbootstrap/4.13.0/js/mdb.min.js" ></script>
+<script src="/js/main.js" ></script>
+
+
+  <script src="/js/lazyload.js" ></script>
+
+
+
+  
+  <script src="https://cdn.staticfile.org/tocbot/4.10.0/tocbot.min.js" ></script>
+  <script>
+    $(document).ready(function () {
+      var navHeight = $('#navbar').height();
+      var toc = $('#toc');
+      var main = $('main');
+      var tocT = navHeight + (toc.offset().top - main.offset().top);
+      var tocLimMin = main.offset().top - navHeight;
+      var tocLimMax = $('#comments').offset().top - navHeight;
+      $(window).scroll(function () {
+        var scroH = document.body.scrollTop + document.documentElement.scrollTop;
+        if (tocLimMin <= scroH && scroH <= tocLimMax) {
+          toc.css({
+            'display': 'block',
+            'position': 'fixed',
+            'top': tocT,
+          });
+        } else if (scroH <= tocLimMin) {
+          toc.css({
+            'position': '',
+            'top': '',
+          });
+        } else if (scroH > tocLimMax) {
+          toc.css('display', 'none');
+        }
+      });
+      tocbot.init({
+        tocSelector: '#tocbot',
+        contentSelector: '.post-content',
+        headingSelector: 'h1,h2,h3,h4,h5,h6',
+        linkClass: 'tocbot-link',
+        activeLinkClass: 'tocbot-active-link',
+        listClass: 'tocbot-list',
+        isCollapsedClass: 'tocbot-is-collapsed',
+        collapsibleClass: 'tocbot-is-collapsible',
+        scrollSmooth: true,
+      });
+      if ($('.toc-list-item').length > 0) {
+        $('#toc > p').css('visibility', 'visible');
+      }
+    });
+  </script>
+
+
+
+
+
+
+
+  <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+<!-- Plugins -->
+
+
+
+  <script src="https://cdn.staticfile.org/prettify/188.0.0/prettify.min.js" ></script>
+  <script>
+    $(document).ready(function () {
+      $('pre').addClass('prettyprint  ');
+      prettyPrint();
+    })
+  </script>
+
+
+
+  <script src="https://cdn.staticfile.org/typed.js/2.0.11/typed.min.js" ></script>
+  <script>
+    var typed = new Typed('#subtitle', {
+      strings: [
+        '  ',
+        "Lua函数重载&nbsp;",
+      ],
+      cursorChar: "|",
+      typeSpeed: 90,
+      loop: false,
+    });
+    typed.stop();
+    $(document).ready(function () {
+      $(".typed-cursor").addClass("h2");
+      typed.start();
+    });
+  </script>
+
+
+
+  <script src="https://cdn.staticfile.org/anchor-js/4.2.2/anchor.min.js" ></script>
+  <script>
+    anchors.options = {
+      placement: "right",
+      visible: "hover",
+      
+    };
+    var el = "h1,h2,h3,h4,h5,h6".split(",");
+    var res = [];
+    for (item of el) {
+      res.push(".markdown-body > " + item)
+    }
+    anchors.add(res.join(", "))
+  </script>
+
+
+
+  <script src="/js/local-search.js" ></script>
+  <script>
+    var path = "/local-search.xml";
+    var inputArea = document.querySelector("#local-search-input");
+    inputArea.onclick = function () {
+      getSearchFile(path);
+      this.onclick = null
+    }
+  </script>
+
+
+
+  <script src="https://cdn.staticfile.org/fancybox/3.5.7/jquery.fancybox.min.js" ></script>
+  <script>
+    $("#post img:not(.no-zoom img, img[no-zoom])").each(
+      function () {
+        var element = document.createElement("a");
+        $(element).attr("data-fancybox", "images");
+        $(element).attr("href", $(this).attr("src"));
+        $(this).wrap(element);
+      }
+    );
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+  
+<script src="/live2d-widget/autoload.js"></script>
+
+
+</body>
+</html>
