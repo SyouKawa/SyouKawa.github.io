@@ -4,6 +4,27 @@
   
   
   <entry>
+    <title>快速理解typedef及其导致的const陷阱</title>
+    <link href="/2020/06/24/%E5%BF%AB%E9%80%9F%E7%90%86%E8%A7%A3typedef%E5%8F%8A%E5%85%B6%E5%AF%BC%E8%87%B4%E7%9A%84const%E9%99%B7%E9%98%B1/"/>
+    <url>/2020/06/24/%E5%BF%AB%E9%80%9F%E7%90%86%E8%A7%A3typedef%E5%8F%8A%E5%85%B6%E5%AF%BC%E8%87%B4%E7%9A%84const%E9%99%B7%E9%98%B1/</url>
+    
+    <content type="html"><![CDATA[<h2 id="C-C-中的重命名"><a href="#C-C-中的重命名" class="headerlink" title="C/C++中的重命名"></a>C/C++中的重命名</h2><h3 id="常用的重命名方式"><a href="#常用的重命名方式" class="headerlink" title="常用的重命名方式"></a>常用的重命名方式</h3><p>从最简单的理解入手，C/C++中的<code>typedef</code>和宏定义都是能够完成对一个变量或者一段代码进行<strong>重命名</strong>，以便程序能够识别新的名称，使得程序更易读。<br><br>例如将<code>int</code>重命名为<code>Int32</code>来标注不同位数系统中的类型长度,或者用宏定义来设置一些常用语句(<em>比如：比较大小函数</em>)。以及用<code>typedef</code>重命名函数指针以达到更清晰得理解回调函数的作用等等。</p><pre><code class="C">#define NKEYS (sizeof keytab / sizeof(struct key))#define MAX(a, b) ((a)&gt;(b)?(a):(b))#define bool chartypedef bool (*OnClick)(int,int);</code></pre><p>有些人会直接将宏定义和typedef理解成同一个概念。但实际上两者区别很大，如果用宏定义的方式去理解<code>typedef</code>，就容易掉入<code>const</code>限定符的陷阱。我个人认为抛开这个重命名的功能不谈，只从重命名后分配内存的角度来分析<code>typedef</code>，就更容易将其与宏定义区分开。</p><a id="more"></a><h3 id="宏定义的重命名模式"><a href="#宏定义的重命名模式" class="headerlink" title="宏定义的重命名模式"></a>宏定义的重命名模式</h3><p>宏定义的重命名模式实际上等价于在C/C++的预处理中进行字符串替换。且宏定义最主要的特征就是：</p><ol><li>使用时也不产生内存分配</li><li>不做类型检查</li><li>宏替换会使编译时间变长，但不占用运行时间(这也是为什么有人会为了防止函数调用而使用宏定义)</li></ol><p>上述特点也就导致经常可以看到有人建议：在用<code>#define</code>时，<strong>应该在能加上括号的地方都加上</strong>。这就是为了防止在字符串进行替换后，不同程序环境导致被替换部分与原程序在==优先级==上产生变化。从该情况来说，宏定义更贴近于大家最常说的“重命名”功能。</p><h3 id="如何用内存理解typedef的重命名"><a href="#如何用内存理解typedef的重命名" class="headerlink" title="如何用内存理解typedef的重命名"></a>如何用内存理解typedef的重命名</h3><p>而<code>typedef</code>更类似于<strong>重新定义了一种类型，也就是重新定义一种内存分配方式</strong>。<br><br>举例来说，在32位系统下<code>typedef long Int32</code>就是重新定义了一个<strong>和long一样在内存中分配32位的变量类型，且其名称为Int32</strong>。而C语言中最常见的在结构体前直接加<code>typedef</code>的方式也可以这样理解。例如：</p><pre><code class="C">typedef int Int16typedef long Int32typedef long long Int64typedef struct UserData{    int ID; //用户唯一ID标示    char* name;//用户名    int userLevel;//用户的会员等级    ···}UserData,*pUserData;</code></pre><p>大括号内部的结构体成员不但定义了该结构体的内存分配方式。同时为<code>typedef</code>定义（<em>或者说重命名</em>）的新变量类型定义了<strong>同样的内存分配方式</strong>。而大括号后面的名字是使用<code>typedef</code>定义的<strong>相同内存分配方式的新变量类型的名称</strong>。这两个例子用颜色来表示可能会更加明显：</p><p><img src="/2020/06/24/%E5%BF%AB%E9%80%9F%E7%90%86%E8%A7%A3typedef%E5%8F%8A%E5%85%B6%E5%AF%BC%E8%87%B4%E7%9A%84const%E9%99%B7%E9%98%B1/typedef.jpg" srcset="/img/loading.gif" alt="image"></p><p>我认为使用这种方式来理解<code>typedef</code>会减少很多仅将它等同于宏定义别名这种理解方式时会产生的一些错误写法。其中，比较常见的就是使用typedef时的const陷阱。</p><h2 id="如何利用该角度解释const陷阱"><a href="#如何利用该角度解释const陷阱" class="headerlink" title="如何利用该角度解释const陷阱"></a>如何利用该角度解释const陷阱</h2><h3 id="用到const的场景假设"><a href="#用到const的场景假设" class="headerlink" title="用到const的场景假设"></a>用到const的场景假设</h3><p>我们不妨来假设一个简单的应用场景：<br></p><ul><li>这里有一个使用C/C++语言编写的简易UI函数库。</li><li>它像现在各类UI框架一样可以使用回调函数来实现一些基础的交互功能（例如：弹出一个确认弹窗，打开一个新界面，关闭当前界面）。</li><li>且假设它的头文件<code>click.h</code>包含如下内容：<br></li></ul><pre><code class="C">typedef struct UserData* pUserData;//读写用户数据的指针类型...//两种常用的函数指针声明typedef bool (*OnClick)(); //点击时触发的函数指针类型typedef bool (*OnClick2Open)(const pUserData);//点击时打开某信息窗的函数指针类型//函数库自带的一些基础函数bool CloseCurrentWin();//关闭当前窗口的函数声明bool PopupWin(const pUserData);//弹出一个以用户数据初始化形成的弹窗...</code></pre><br><ul><li><strong>场景说明：</strong><ul><li>其中<code>pUserData</code>是一个自定义结构体类型的指针，它的功能是存储特定类型的用户数据。其定义形如<code>typedef struct UserData* pUserData</code>,这里的UserData代表了用户的==只读==数据，所以需要用const来限定。</li><li><em>上述限定可以保证：在pUserData指向的某一用户数据内容时，无法通过pUserData指针更改该用户的数据。但用户本人在更改时，系统调用的是形如<code>pOwnData</code>一类的可读可写接口。从而保证了信息的读写安全。</em></li></ul></li></ul><hr><h3 id="误用const时与该场景的潜在冲突"><a href="#误用const时与该场景的潜在冲突" class="headerlink" title="误用const时与该场景的潜在冲突"></a>误用const时与该场景的潜在冲突</h3><p>上述函数库的写法会导致一个问题：使用<code>typedef struct UserData* pUserData</code>来重命名时，会导致该类型的指针作为上述函数的实参时，并不能起到只读的作用，而是导致指针无法指向别的区域。<br>因为<code>const</code>是有两种情况的：<br></p><pre><code class="C">//假设我们有一个变量，用来读取用户的会员等级，但不能更改会员等级//该变量和上面的权限需求是一致，即：只读数据，但不改数据，且可改变指针指向不同的用户数据//这两种写法等价，限定了只读数据，但可以指向别的用户的数据区const int * pUserLevel;int const * pUserLevel&#39;//这种写法，将不可更改该指针的指向，即：const限定的是指针本身int * const pUserLevel;</code></pre><p>基于这两种情况，已知我们在调用上述的库函数时，需要的是第一、二种只读的const限定模式。但在使用<code>typedef</code>时，如果我们写了<code>typedef struct UserData* pUserData</code>。此时，该变量指针将成为一个<strong>常指针</strong>，无法改变其指向的数据区域。即：</p><blockquote><p><code>typedef struct UserData* pUserData</code> 的写法，在函数<code>bool PopupWin(const pUserData)</code>等价于：<code>bool PopupWin(UserData const *pUserData)</code>，这将导致该指针无法指向别的数据区（第三种情况），而不是对指向的不同数据区使用只读权限（第一二种情况）。</p></blockquote><h3 id="从该角度解释const限定符为什么属于第三种情况"><a href="#从该角度解释const限定符为什么属于第三种情况" class="headerlink" title="从该角度解释const限定符为什么属于第三种情况"></a>从该角度解释const限定符为什么属于第三种情况</h3><p>这就是前述所说的，<code>typedef</code>的重命名不等同于宏定义的字符串替换，产生上述错误的根本，就是将<code>typedef</code>定义的东西<strong>用字符替换的方式</strong>放到函数中理解。<br><br><br>而使用第二部分阐述的用内存分配的方式来理解，就更不容易出错。将<code>typedef struct UserData* pUserData</code>看做是新定义了一种<strong>在内存中占用4字节的指针类型，且其名称为pUserData</strong>。此时，将该类型的变量再次放入函数调用中理解：<code>bool PopupWin(const pUserData)</code>，就可以理解到该<code>const</code>限定的是<strong>指针本身的值</strong>，即指针的指向为常量，而不是在限定它指向区域为只读，因为<code>const</code>将指针限制为了常量，而没有管指针指向的位置。</p><h3 id="const陷阱的解决方法"><a href="#const陷阱的解决方法" class="headerlink" title="const陷阱的解决方法"></a>const陷阱的解决方法</h3><p>所以，为了避免这种情况的出现，我们可以使用：</p><pre><code>···Ctypedef struct UserData* pUserData;//读写指针typedef const struct UserData* cpUserData;//只读指针···typedef bool (*OnClick2Open)(cpUserData);//点击时打开某信息窗的函数指针类型···</code></pre><p>来防止上述的const陷阱。而该问题也更能说明<code>typedef</code>与宏定义之间重命名之间的区别。</p>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>C</tag>
+      
+      <tag>C++</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
     <title>Unity运行时检测Prefab的解决方案</title>
     <link href="/2020/02/24/Unity%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A3%80%E6%B5%8BPrefab%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/"/>
     <url>/2020/02/24/Unity%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A3%80%E6%B5%8BPrefab%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/</url>
@@ -40,27 +61,6 @@
       <tag>Hexo</tag>
       
       <tag>Bug</tag>
-      
-    </tags>
-    
-  </entry>
-  
-  
-  
-  <entry>
-    <title>Hello World</title>
-    <link href="/2020/02/08/hello-world/"/>
-    <url>/2020/02/08/hello-world/</url>
-    
-    <content type="html"><![CDATA[<p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p><a id="more"></a><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><pre><code class="bash">$ hexo new &quot;My New Post&quot;</code></pre><p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><pre><code class="bash">$ hexo server</code></pre><p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><pre><code class="bash">$ hexo generate</code></pre><p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><pre><code class="bash">$ hexo deploy</code></pre><p>More info: <a href="https://hexo.io/docs/one-command-deployment.html" target="_blank" rel="noopener">Deployment</a></p>]]></content>
-    
-    
-    
-    <tags>
-      
-      <tag>Test</tag>
-      
-      <tag>Hexo</tag>
       
     </tags>
     

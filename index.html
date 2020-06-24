@@ -144,6 +144,47 @@
     
     
     <div class="col-12 col-md-8 mx-auto index-info">
+      <a href="/2020/06/24/%E5%BF%AB%E9%80%9F%E7%90%86%E8%A7%A3typedef%E5%8F%8A%E5%85%B6%E5%AF%BC%E8%87%B4%E7%9A%84const%E9%99%B7%E9%98%B1/">
+        <p class="h4 index-header">快速理解typedef及其导致的const陷阱</p>
+      </a>
+
+      <a href="/2020/06/24/%E5%BF%AB%E9%80%9F%E7%90%86%E8%A7%A3typedef%E5%8F%8A%E5%85%B6%E5%AF%BC%E8%87%B4%E7%9A%84const%E9%99%B7%E9%98%B1/">
+        
+        
+          
+          
+        
+        <div class="index-excerpt" style="max-height: none;">
+          <div class="index-text mb-1">C/C++中的重命名常用的重命名方式从最简单的理解入手，C/C++中的typedef和宏定义都是能够完成对一个变量或者一段代码进行重命名，以便程序能够识别新的名称，使得程序更易读。例如将int重命名为Int32来标注不同位数系统中的类型长度,或者用宏定义来设置一些常用语句(比如：比较大小函数)。以及用typedef重命名函数指针以达到更清晰得理解回调函数的作用等等。
+#define NKEYS (sizeof keytab / sizeof(struct key))
+#define MAX(a, b) ((a)&gt;(b)?(a):(b))
+#define bool char
+typedef bool (*OnClick)(int,int);
+有些人会直接将宏定义和typedef理解成同一个概念。但实际上两者区别很大，如果用宏定义的方式去理解typedef，就容易掉入const限定符的陷阱。我个人认为抛开这个重命名的功能不谈，只从重命名后分配内存的角度来分析typedef，就更容易将其与宏定义区分开。...</div>
+        </div>
+      </a>
+
+      <div class="index-btm">
+        
+          <i class="iconfont icon-riqi2"></i>&nbsp;2020-06-24&nbsp;&nbsp;
+        
+        
+        
+          <i class="iconfont icon-tag"></i>
+          
+            <a href="/tags/C/">C</a>&nbsp;
+          
+            <a href="/tags/C/">C++</a>&nbsp;
+          
+        
+      </div>
+    </div>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <div class="col-12 col-md-8 mx-auto index-info">
       <a href="/2020/02/24/Unity%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A3%80%E6%B5%8BPrefab%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/">
         <p class="h4 index-header">Unity运行时检测Prefab的解决方案</p>
       </a>
@@ -221,42 +262,6 @@ $ Tree -L 2
             <a href="/tags/Hexo/">Hexo</a>&nbsp;
           
             <a href="/tags/Bug/">Bug</a>&nbsp;
-          
-        
-      </div>
-    </div>
-  </div>
-
-  <div class="row mx-auto index-card">
-    
-    
-    <div class="col-12 col-md-8 mx-auto index-info">
-      <a href="/2020/02/08/hello-world/">
-        <p class="h4 index-header">Hello World</p>
-      </a>
-
-      <a href="/2020/02/08/hello-world/">
-        
-        
-          
-          
-        
-        <div class="index-excerpt" style="max-height: none;">
-          <div class="index-text mb-1">Welcome to Hexo! This is your very first post. Check documentation for more info. If you get any problems when using Hexo, you can find the answer in troubleshooting or you can ask me on GitHub....</div>
-        </div>
-      </a>
-
-      <div class="index-btm">
-        
-          <i class="iconfont icon-riqi2"></i>&nbsp;2020-02-08&nbsp;&nbsp;
-        
-        
-        
-          <i class="iconfont icon-tag"></i>
-          
-            <a href="/tags/Test/">Test</a>&nbsp;
-          
-            <a href="/tags/Hexo/">Hexo</a>&nbsp;
           
         
       </div>
