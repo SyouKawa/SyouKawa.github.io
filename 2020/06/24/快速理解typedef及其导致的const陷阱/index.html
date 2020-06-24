@@ -138,7 +138,7 @@
                   
                   &nbsp;<i class="far fa-clock"></i>
                   <span class="post-count">
-                      6 分钟
+                      7 分钟
                   </span>&nbsp;
                 
 
@@ -237,7 +237,7 @@ int const * pUserLevel&#39;
 int * const pUserLevel;</code></pre>
 <p>基于这两种情况，已知我们在调用上述的库函数时，需要的是第一、二种只读的const限定模式。但在使用<code>typedef</code>时，如果我们写了<code>typedef struct UserData* pUserData</code>。此时，该变量指针将成为一个<strong>常指针</strong>，无法改变其指向的数据区域。即：</p>
 <blockquote>
-<p><code>typedef struct UserData* pUserData</code> 的写法，在函数<code>bool PopupWin(const pUserData)</code>等价于：<code>bool PopupWin(UserData const *pUserData)</code>，这将导致该指针无法指向别的数据区（第三种情况），而不是对指向的不同数据区使用只读权限（第一二种情况）。</p>
+<p><code>typedef struct UserData* pUserData</code> 的写法，在函数<code>bool PopupWin(const pUserData)</code>等价于：<code>bool PopupWin(UserData * const pUserData)</code>，这将导致该指针无法指向别的数据区（第三种情况），而不是对指向的不同数据区使用只读权限（第一二种情况）。<br>如果将<code>typedef</code>理解成宏定义那样的字符替换，就会将实参代入时理解为<code>bool PopupWin(const UserData* pUserData)</code>,但实际上使用<code>typedef</code>替换后实际上等同于<code>bool PopupWin(UserData* const pUserData)</code>，两者的效果截然不同。</p>
 </blockquote>
 <h3 id="从该角度解释const限定符为什么属于第三种情况"><a href="#从该角度解释const限定符为什么属于第三种情况" class="headerlink" title="从该角度解释const限定符为什么属于第三种情况"></a>从该角度解释const限定符为什么属于第三种情况</h3><p>这就是前述所说的，<code>typedef</code>的重命名不等同于宏定义的字符串替换，产生上述错误的根本，就是将<code>typedef</code>定义的东西<strong>用字符替换的方式</strong>放到函数中理解。<br><br><br>而使用第二部分阐述的用内存分配的方式来理解，就更不容易出错。将<code>typedef struct UserData* pUserData</code>看做是新定义了一种<strong>在内存中占用4字节的指针类型，且其名称为pUserData</strong>。此时，将该类型的变量再次放入函数调用中理解：<code>bool PopupWin(const pUserData)</code>，就可以理解到该<code>const</code>限定的是<strong>指针本身的值</strong>，即指针的指向为常量，而不是在限定它指向区域为只读，因为<code>const</code>将指针限制为了常量，而没有管指针指向的位置。</p>
 <h3 id="const陷阱的解决方法"><a href="#const陷阱的解决方法" class="headerlink" title="const陷阱的解决方法"></a>const陷阱的解决方法</h3><p>所以，为了避免这种情况的出现，我们可以使用：</p>
