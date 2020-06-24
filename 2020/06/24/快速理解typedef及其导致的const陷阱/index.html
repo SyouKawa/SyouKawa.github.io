@@ -197,7 +197,7 @@ typedef struct UserData{
     ···
 }UserData,*pUserData;</code></pre>
 <p>大括号内部的结构体成员不但定义了该结构体的内存分配方式。同时为<code>typedef</code>定义（<em>或者说重命名</em>）的新变量类型定义了<strong>同样的内存分配方式</strong>。而大括号后面的名字是使用<code>typedef</code>定义的<strong>相同内存分配方式的新变量类型的名称</strong>。这两个例子用颜色来表示可能会更加明显：</p>
-<p><img src="/2020/06/24/%E5%BF%AB%E9%80%9F%E7%90%86%E8%A7%A3typedef%E5%8F%8A%E5%85%B6%E5%AF%BC%E8%87%B4%E7%9A%84const%E9%99%B7%E9%98%B1/typedef.jpg" srcset="/img/loading.gif" alt="image"></p>
+<p><img src="/2020/06/24/%E5%BF%AB%E9%80%9F%E7%90%86%E8%A7%A3typedef%E5%8F%8A%E5%85%B6%E5%AF%BC%E8%87%B4%E7%9A%84const%E9%99%B7%E9%98%B1/typedef.jpg" srcset="/img/loading.gif" alt="用内存分配新类型图示"></p>
 <p>我认为使用这种方式来理解<code>typedef</code>会减少很多仅将它等同于宏定义别名这种理解方式时会产生的一些错误写法。其中，比较常见的就是使用typedef时的const陷阱。</p>
 <h2 id="如何利用该角度解释const陷阱"><a href="#如何利用该角度解释const陷阱" class="headerlink" title="如何利用该角度解释const陷阱"></a>如何利用该角度解释const陷阱</h2><h3 id="用到const的场景假设"><a href="#用到const的场景假设" class="headerlink" title="用到const的场景假设"></a>用到const的场景假设</h3><p>我们不妨来假设一个简单的应用场景：<br></p>
 <ul>
